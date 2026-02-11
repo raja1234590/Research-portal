@@ -184,7 +184,13 @@ Return JSON in this exact format:
   }
 }
 
-Be precise with numbers. Do not hallucinate values. If uncertain, set confidence to "medium" or "low" and add notes.`
+Be precise with numbers. Do not hallucinate values. If uncertain, set confidence to "medium" or "low" and add notes.
+
+CRITICAL RESPONSE RULES:
+- Your entire reply MUST be a single valid JSON object exactly in the format shown above.
+- Do NOT include any additional text, explanations, comments, or markdown.
+- Do NOT wrap the JSON in backticks.
+- Do NOT prepend or append any text outside the JSON object.`
 
   try {
     const openai = getOpenAIClient()
@@ -231,13 +237,35 @@ Be precise with numbers. Do not hallucinate values. If uncertain, set confidence
 
     if (!content) throw new Error('No response from AI model')
 
+    // Helpful for debugging model output during development
+    console.log('Model raw content (first 500 chars):', content.slice(0, 500))
+
     content = cleanModelJsonString(content)
 
     let extracted: ExtractionResult
     try {
+      // First, try to parse the whole content as JSON
       extracted = JSON.parse(content)
     } catch {
-      extracted = JSON.parse(extractFirstJsonObject(content))
+      try {
+        // Next, try to pull out the first JSON object from a messy reply
+        extracted = JSON.parse(extractFirstJsonObject(content))
+      } catch {
+        // Fallback: model did not return valid JSON at all
+        extracted = {
+          companyName: undefined,
+          reportingPeriod: undefined,
+          currency: undefined,
+          unit: undefined,
+          lineItems: [],
+          metadata: {
+            confidence: 'low',
+            notes: [
+              'Model did not return valid JSON. Raw response was kept only in logs for debugging.',
+            ],
+          },
+        }
+      }
     }
 
     // Heuristic detection from raw text (used when model leaves fields empty)
