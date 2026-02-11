@@ -226,13 +226,24 @@ CRITICAL RESPONSE RULES:
         content = response.choices[0]?.message?.content ?? undefined
       }
     } else {
-      // Groq or other OpenAI-compatible providers: no response_format
-      const response = await openai.chat.completions.create({
-        model,
-        messages,
-        temperature: 0.1,
-      })
-      content = response.choices[0]?.message?.content ?? undefined
+      // Groq provider: try to force JSON mode as well
+      try {
+        const response = await openai.chat.completions.create({
+          model,
+          messages,
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        })
+        content = response.choices[0]?.message?.content ?? undefined
+      } catch {
+        // Fallback without response_format if Groq model rejects json_object
+        const response = await openai.chat.completions.create({
+          model,
+          messages,
+          temperature: 0.1,
+        })
+        content = response.choices[0]?.message?.content ?? undefined
+      }
     }
 
     if (!content) throw new Error('No response from AI model')
