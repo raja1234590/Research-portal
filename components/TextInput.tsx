@@ -26,7 +26,7 @@ export default function TextInput({
     }
 
     // Guard extremely long text to avoid hitting server 413 limits
-    const MAX_CHARS = 50000
+    const MAX_CHARS = 80000 
     if (text.length > MAX_CHARS) {
       onError(
         `Text too long. Please limit input to about ${MAX_CHARS.toLocaleString()} characters.`
