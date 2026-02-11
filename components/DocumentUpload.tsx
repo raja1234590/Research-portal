@@ -24,6 +24,15 @@ export default function DocumentUpload({
       const file = acceptedFiles[0]
       if (!file) return
 
+      // Basic client-side file size guard to avoid hitting server 413 limits
+      const MAX_FILE_SIZE_MB = 5
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        onError(
+          `File too large. Please upload a file smaller than ${MAX_FILE_SIZE_MB}MB.`
+        )
+        return
+      }
+
       setUploadedFile(file)
       onProcessingStart()
 
@@ -41,8 +50,33 @@ export default function DocumentUpload({
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to extract financial data')
+          let errorMessage = 'Failed to extract financial data'
+
+          try {
+            const contentType = response.headers.get('content-type') || ''
+
+            if (contentType.includes('application/json')) {
+              const errorData = await response.json()
+              if (errorData?.error) {
+                errorMessage = errorData.error
+              }
+            } else {
+              const textBody = await response.text()
+              if (textBody) {
+                errorMessage = textBody
+              }
+            }
+          } catch {
+            // If parsing fails (e.g. HTML error page), fall back to status info
+            if (response.status === 413) {
+              errorMessage =
+                'File or text is too large for processing. Please upload a smaller document or shorten the content.'
+            } else if (response.statusText) {
+              errorMessage = response.statusText
+            }
+          }
+
+          throw new Error(errorMessage)
         }
 
         const data: FinancialData = await response.json()
