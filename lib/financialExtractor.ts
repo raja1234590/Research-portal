@@ -129,7 +129,19 @@ Format:
       reportingPeriod: parsed.reportingPeriod || undefined,
       currency: parsed.currency || undefined,
       unit: parsed.unit || undefined,
-      lineItems: parsed.lineItems || [],
+
+      // 🔥 Type-safe normalization (FIXED note issue here)
+      lineItems: (parsed.lineItems || []).map(item => ({
+        lineItem: item.lineItem,
+        values: (item.values || []).map(v => ({
+          year: v.year,
+          value: v.value ?? null,
+          currency: v.currency || undefined,
+          unit: v.unit || undefined,
+          note: v.note ?? undefined, // ✅ converts null → undefined
+        })),
+      })),
+
       metadata: {
         extractionDate: new Date().toISOString(),
         confidence: parsed.metadata?.confidence || 'low',
