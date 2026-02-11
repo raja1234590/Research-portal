@@ -25,6 +25,15 @@ export default function TextInput({
       return
     }
 
+    // Guard extremely long text to avoid hitting server 413 limits
+    const MAX_CHARS = 50000
+    if (text.length > MAX_CHARS) {
+      onError(
+        `Text too long. Please limit input to about ${MAX_CHARS.toLocaleString()} characters.`
+      )
+      return
+    }
+
     onProcessingStart()
 
     try {
@@ -37,8 +46,32 @@ export default function TextInput({
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to extract financial data')
+        let errorMessage = 'Failed to extract financial data'
+
+        try {
+          const contentType = response.headers.get('content-type') || ''
+
+          if (contentType.includes('application/json')) {
+            const errorData = await response.json()
+            if (errorData?.error) {
+              errorMessage = errorData.error
+            }
+          } else {
+            const textBody = await response.text()
+            if (textBody) {
+              errorMessage = textBody
+            }
+          }
+        } catch {
+          if (response.status === 413) {
+            errorMessage =
+              'Text is too large for processing. Please shorten the content and try again.'
+          } else if (response.statusText) {
+            errorMessage = response.statusText
+          }
+        }
+
+        throw new Error(errorMessage)
       }
 
       const data: FinancialData = await response.json()
