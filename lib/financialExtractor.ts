@@ -237,8 +237,12 @@ CRITICAL RESPONSE RULES:
 
     if (!content) throw new Error('No response from AI model')
 
-    // Helpful for debugging model output during development
-    console.log('Model raw content (first 500 chars):', content.slice(0, 500))
+    // Helpful for debugging model output during development.
+    // Log a larger portion so you can see the full JSON the model returns.
+    console.log(
+      'Model raw content (first 2000 chars):',
+      content.slice(0, 2000)
+    )
 
     content = cleanModelJsonString(content)
 
