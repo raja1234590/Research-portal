@@ -1,5 +1,3 @@
-
-
 import OpenAI from 'openai'
 import { FinancialData } from '@/types'
 
@@ -201,7 +199,12 @@ CRITICAL RESPONSE RULES:
       { role: 'system' as const, content: systemPrompt },
       {
         role: 'user' as const,
-        content: `Extract financial data from this document:\n\n${documentText.substring(0, 15000)}`,
+        // Use a smaller slice of the document so the model call is faster
+        // and less likely to hit the Vercel FUNCTION_INVOCATION_TIMEOUT limit.
+        content: `Extract financial data from this document:\n\n${documentText.substring(
+          0,
+          4000
+        )}`,
       },
     ]
 
