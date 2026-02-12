@@ -26,13 +26,33 @@ function isGroqProvider() {
   return base.includes('api.groq.com')
 }
 
-function extractFirstJsonObject(text: string): string {
-  // Attempts to find the first top-level JSON object in a possibly messy response.
-  const start = text.indexOf('{')
-  if (start === -1) throw new Error('Model did not return JSON')
+function extractFirstJsonPayload(text: string): string {
+  // Attempts to find the first top-level JSON object OR array in a possibly messy response.
+  const firstBrace = text.indexOf('{')
+  const firstBracket = text.indexOf('[')
+
+  let start = -1
+  let openChar: '{' | '[' | null = null
+  let closeChar: '}' | ']' | null = null
+
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    start = firstBrace
+    openChar = '{'
+    closeChar = '}'
+  } else if (firstBracket !== -1) {
+    start = firstBracket
+    openChar = '['
+    closeChar = ']'
+  }
+
+  if (start === -1 || !openChar || !closeChar) {
+    throw new Error('Model did not return JSON')
+  }
+
   let depth = 0
   let inString = false
   let escape = false
+
   for (let i = start; i < text.length; i++) {
     const ch = text[i]
     if (escape) {
@@ -48,10 +68,15 @@ function extractFirstJsonObject(text: string): string {
       continue
     }
     if (inString) continue
-    if (ch === '{') depth++
-    if (ch === '}') depth--
-    if (depth === 0) return text.slice(start, i + 1)
+
+    if (ch === openChar) depth++
+    if (ch === closeChar) depth--
+
+    if (depth === 0) {
+      return text.slice(start, i + 1)
+    }
   }
+
   throw new Error('Could not parse JSON from model response')
 }
 
@@ -295,11 +320,14 @@ CRITICAL RESPONSE RULES:
     let extracted: ExtractionResult
     try {
       // First, try to parse the whole content as JSON
-      extracted = JSON.parse(content)
+      const parsed = JSON.parse(content) as any
+      extracted = Array.isArray(parsed) ? (parsed[0] as ExtractionResult) : parsed
     } catch {
       try {
-        // Next, try to pull out the first JSON object from a messy reply
-        extracted = JSON.parse(extractFirstJsonObject(content))
+        // Next, try to pull out the first JSON object/array from a messy reply
+        const payload = extractFirstJsonPayload(content)
+        const parsed = JSON.parse(payload) as any
+        extracted = Array.isArray(parsed) ? (parsed[0] as ExtractionResult) : parsed
       } catch {
         // Fallback: model did not return valid JSON at all
         extracted = {
