@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractFinancialData } from '@/lib/financialExtractor'
 
+// Increase the maximum execution time for this route on platforms like Vercel.
+// This helps avoid FUNCTION_INVOCATION_TIMEOUT when the LLM call is slow.
+export const maxDuration = 60
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
