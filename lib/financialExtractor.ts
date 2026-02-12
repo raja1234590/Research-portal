@@ -229,9 +229,9 @@ CRITICAL RESPONSE RULES:
         role: 'user' as const,
         // Use a smaller slice of the document so the model call is faster
         // and less likely to hit the Vercel FUNCTION_INVOCATION_TIMEOUT limit.
-        content: `Extract financial data from this document:\n\n${documentText.substring(
+        content: `Extract financial data from this document. Focus on the main statement tables and key totals only:\n\n${documentText.substring(
           0,
-          4000
+          2500
         )}`,
       },
     ]
